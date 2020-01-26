@@ -14,7 +14,9 @@ namespace OptionsUpdater
         private static readonly string base_url = "https://finance.yahoo.com/quote/";
         private static readonly string ticker = "UVXY";
 
-        private static string date;
+        private static int choice;
+        private static Dictionary<int, int> unixTimestamp = new Dictionary<int, int>();
+        private static Dictionary<int, string> dateFormat = new Dictionary<int, string>();
         private static List<string[]> callsTable, putsTable;
 
         static void Main()
@@ -25,9 +27,9 @@ namespace OptionsUpdater
             QueryData(optionsURL, true);
 
             Console.WriteLine("Enter the number next to the date:");
-            date = Console.ReadLine();
+            choice = int.Parse(Console.ReadLine());
 
-            string dateURL = optionsURL + "&date=" + date;
+            string dateURL = optionsURL + "&date=" + unixTimestamp[choice];
             QueryData(dateURL, false);
 
             ExcelExport(callsTable, putsTable);
@@ -41,6 +43,12 @@ namespace OptionsUpdater
             {
                 ExcelWorksheet putsSheet = excel.Workbook.Worksheets["Puts"];
                 ExcelWorksheet callsSheet = excel.Workbook.Worksheets["Calls"];
+
+                callsSheet.Cells["AZ1"].Clear();
+                putsSheet.Cells["AZ1"].Clear();
+
+                callsSheet.Cells["AZ1"].Value = "Calls for " + dateFormat[choice];
+                putsSheet.Cells["AZ1"].Value = "Puts for " + dateFormat[choice];
 
                 callsSheet.Cells["AZ3:BJ100"].Value = "";
                 putsSheet.Cells["AZ3:BJ100"].Value = "";
@@ -95,10 +103,15 @@ namespace OptionsUpdater
         private static void DateDropdownParser(HtmlDocument document)
         {
             string dateDropdownNode = "//select[@class='Fz(s)']//option";
-            
+            int i = 0;
+
             foreach (HtmlNode node in document.DocumentNode.SelectNodes(dateDropdownNode))
             {
-                Console.WriteLine(node.Attributes["value"].Value + " - " + node.InnerText);
+                i++;
+                Console.WriteLine("(" + i + ") - " + node.InnerText);
+
+                unixTimestamp.Add(i, int.Parse(node.Attributes["value"].Value));
+                dateFormat.Add(i, node.InnerText);
             }
         }
 
