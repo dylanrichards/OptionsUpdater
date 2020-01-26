@@ -10,18 +10,14 @@ namespace OptionsUpdater
 {
     class Program
     {
-        private static readonly string username = "Gatsby";
+        private static readonly string username = "dylan";
         private static readonly string base_url = "https://finance.yahoo.com/quote/";
         private static readonly string ticker = "UVXY";
 
-        private static List<string[]> headerRow = new List<string[]>(){
-            new string[] { "Contract Name","Last Trade Date","Strike","Last Price","Bid","Ask","Change  %","Change","Volume","Open Interest","Implied Volatility" }
-        };
-
         private static string date;
-        private static List<List<string>> callsTable, putsTable;
+        private static List<string[]> callsTable, putsTable;
 
-        static void Main(string[] args)
+        static void Main()
         {
             Console.WriteLine("Hello, " + username);
 
@@ -37,7 +33,7 @@ namespace OptionsUpdater
             ExcelExport(callsTable, putsTable);
         }
 
-        private static void ExcelExport(List<List<string>> callsTable, List<List<string>> putsTable)
+        private static void ExcelExport(List<string[]> callsTable, List<string[]> putsTable)
         {
             FileInfo excelFile = new FileInfo(GetFilePath());
 
@@ -46,84 +42,81 @@ namespace OptionsUpdater
                 ExcelWorksheet putsSheet = excel.Workbook.Worksheets["Puts"];
                 ExcelWorksheet callsSheet = excel.Workbook.Worksheets["Calls"];
 
-                callsSheet.Cells["AZ2:BJ140"].Value = "";
-                putsSheet.Cells["AZ2:BJ140"].Value = "";
+                callsSheet.Cells["AZ3:BJ100"].Value = "";
+                putsSheet.Cells["AZ3:BJ100"].Value = "";
 
-                string headerRange = "AZ2:BJ2";
-                callsSheet.Cells[headerRange].LoadFromArrays(headerRow);
-                putsSheet.Cells[headerRange].LoadFromArrays(headerRow);
-
-                int rowNum = 2;
-                string dataRange;
-                foreach (List<string> row in callsTable)
-                {
-                    rowNum++;
-                    dataRange = "AZ" + rowNum + ":" + "BJ" + rowNum;
-                    StringBuilder sb = new StringBuilder();
-                    foreach (string cell in row)
-                    {
-                        sb.Append(cell.Replace(",", "").Trim() + ",");
-                    }
-                    callsSheet.Cells[dataRange].LoadFromText(sb.ToString());
-                }
-
-                rowNum = 2;
-                foreach (List<string> row in putsTable)
-                {
-                    rowNum++;
-                    dataRange = "AZ" + rowNum + ":" + "BJ" + rowNum;
-                    StringBuilder sb = new StringBuilder();
-                    foreach (string cell in row)
-                    {
-                        sb.Append(cell.Replace(",", "").Trim() + ",");
-                    }
-                    putsSheet.Cells[dataRange].LoadFromText(sb.ToString());
-                }
+                StoreTable(callsSheet, callsTable);
+                StoreTable(putsSheet, putsTable);
 
                 excel.Save();
             }
         }
 
-        private static string GetFilePath()
+        private static void StoreTable(ExcelWorksheet sheet, List<string[]> table)
         {
-            return @"C:\Users\" + username + @"\Desktop\UVXY Put Option Payoff.xlsx";
+            int rowNum = 2;
+            string dataRange;
+            StringBuilder sb = new StringBuilder();
+
+            foreach (string[] row in table)
+            {
+                rowNum++;
+                dataRange = "AZ" + rowNum + ":BJ" + rowNum;
+
+                foreach (string cell in row)
+                {
+                    sb.Append(cell.Replace(",", "") + ",");
+                }
+
+                sheet.Cells[dataRange].LoadFromText(sb.ToString());
+                sb.Clear();
+            }
         }
 
+        private static string GetFilePath()
+        {
+            return @"C:\Users\" + username + @"\Desktop\test.xlsx";
+        }
 
         private static void QueryData(string url, bool printDates)
         {
             HtmlDocument document = new HtmlWeb().Load(url);
-            OptionsDataParser(document, printDates);
-        }
-
-        private static void OptionsDataParser(HtmlDocument document, bool printDates)
-        {
-            string dateDropdownNode = "//select[@class='Fz(s)']//option";
-
-            string callsTableNode = "//table[@class='calls W(100%) Pos(r) Bd(0) Pt(0) list-options']";
-            string putsTableNode = "//table[@class='puts W(100%) Pos(r) list-options']";
 
             if (printDates)
             {
-                foreach (HtmlNode node in document.DocumentNode.SelectNodes(dateDropdownNode))
-                {
-                    Console.WriteLine(node.Attributes["value"].Value + " - " + node.InnerText);
-                }
+                DateDropdownParser(document);
             }
+            else
+            {
+                OptionsDataParser(document);
+            }
+        }
 
+        private static void DateDropdownParser(HtmlDocument document)
+        {
+            string dateDropdownNode = "//select[@class='Fz(s)']//option";
+            
+            foreach (HtmlNode node in document.DocumentNode.SelectNodes(dateDropdownNode))
+            {
+                Console.WriteLine(node.Attributes["value"].Value + " - " + node.InnerText);
+            }
+        }
+
+        private static void OptionsDataParser(HtmlDocument document)
+        {
+            string callsTableNode = "//table[@class='calls W(100%) Pos(r) Bd(0) Pt(0) list-options']";
+            string putsTableNode = "//table[@class='puts W(100%) Pos(r) list-options']";
 
             callsTable = document.DocumentNode.SelectSingleNode(callsTableNode)
                 .Descendants("tr")
-                .Skip(1)
                 .Where(tr => tr.Elements("td").Count() > 1)
-                .Select(tr => tr.Elements("td").Select(td => td.InnerText.Trim()).ToList())
+                .Select(tr => tr.Elements("td").Select(td => td.InnerText.Trim()).ToArray())
                 .ToList();
 
             putsTable = document.DocumentNode.SelectSingleNode(putsTableNode)
                 .Descendants("tr")
-                .Skip(1)
                 .Where(tr => tr.Elements("td").Count() > 1)
-                .Select(tr => tr.Elements("td").Select(td => td.InnerText.Trim()).ToList())
+                .Select(tr => tr.Elements("td").Select(td => td.InnerText.Trim()).ToArray())
                 .ToList();
         }
 
