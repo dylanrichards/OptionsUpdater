@@ -22,7 +22,7 @@ namespace OptionsUpdater
         static void Main()
         {
             Console.WriteLine("Hello, " + username);
-
+            
             string optionsURL = base_url + ticker + "/options?p=" + ticker;
             QueryData(optionsURL, true);
 
@@ -92,12 +92,22 @@ namespace OptionsUpdater
 
             if (printDates)
             {
+                CurrentPriceParser(document);
                 DateDropdownParser(document);
             }
             else
             {
                 OptionsDataParser(document);
             }
+        }
+
+        private static void CurrentPriceParser(HtmlDocument document)
+        {
+            string currentPriceNode = "//span[@class='Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)']";
+            HtmlNode priceNode = document.DocumentNode.SelectSingleNode(currentPriceNode);
+            string currentPrice = priceNode.InnerText;
+
+            Console.WriteLine("The current price for " + ticker + " is: $" + currentPrice);
         }
 
         private static void DateDropdownParser(HtmlDocument document)
