@@ -14,6 +14,12 @@ namespace OptionsUpdater
         private static readonly string base_url = "https://finance.yahoo.com/quote/";
         private static readonly string ticker = "UVXY";
 
+        private static readonly string currentPriceNode = "//span[@class='Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)']";
+        private static readonly string dateDropdownNode = "//select[@class='Fz(s) H(25px) Bd Bdc($seperatorColor)']//option";
+        private static readonly string callsTableNode = "//table[@class='calls W(100%) Pos(r) Bd(0) Pt(0) list-options']";
+        private static readonly string putsTableNode = "//table[@class='puts W(100%) Pos(r) list-options']";
+
+
         private static int choice;
         private static Dictionary<int, int> unixTimestamp = new Dictionary<int, int>();
         private static Dictionary<int, string> dateFormat = new Dictionary<int, string>();
@@ -103,7 +109,6 @@ namespace OptionsUpdater
 
         private static void CurrentPriceParser(HtmlDocument document)
         {
-            string currentPriceNode = "//span[@class='Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)']";
             HtmlNode priceNode = document.DocumentNode.SelectSingleNode(currentPriceNode);
             string currentPrice = priceNode.InnerText;
 
@@ -112,7 +117,6 @@ namespace OptionsUpdater
 
         private static void DateDropdownParser(HtmlDocument document)
         {
-            string dateDropdownNode = "//select[@class='Fz(s)']//option";
             int i = 0;
 
             foreach (HtmlNode node in document.DocumentNode.SelectNodes(dateDropdownNode))
@@ -127,9 +131,6 @@ namespace OptionsUpdater
 
         private static void OptionsDataParser(HtmlDocument document)
         {
-            string callsTableNode = "//table[@class='calls W(100%) Pos(r) Bd(0) Pt(0) list-options']";
-            string putsTableNode = "//table[@class='puts W(100%) Pos(r) list-options']";
-
             callsTable = document.DocumentNode.SelectSingleNode(callsTableNode)
                 .Descendants("tr")
                 .Where(tr => tr.Elements("td").Count() > 1)
