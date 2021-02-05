@@ -2,6 +2,7 @@
 using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -17,53 +18,66 @@ namespace OptionsUpdater
         private static readonly string currentPriceNode = "//span[@class='Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)']";
         private static readonly string dateDropdownNode = "//select[@class='Fz(s) H(25px) Bd Bdc($seperatorColor)']//option";
         private static readonly string callsTableNode = "//table[@class='calls W(100%) Pos(r) Bd(0) Pt(0) list-options']";
-        private static readonly string putsTableNode = "//table[@class='puts W(100%) Pos(r) list-options']";
+        //private static readonly string putsTableNode = "//table[@class='puts W(100%) Pos(r) list-options']";
 
-
-        private static int choice;
         private static Dictionary<int, int> unixTimestamp = new Dictionary<int, int>();
         private static Dictionary<int, string> dateFormat = new Dictionary<int, string>();
-        private static List<string[]> callsTable, putsTable;
+        private static List<string[]> callsTable, callsTable2;
+
+        private static string currentPrice;
 
         static void Main()
         {
             Console.WriteLine("Hello, " + username);
             
             string optionsURL = base_url + ticker + "/options?p=" + ticker;
-            QueryData(optionsURL, true);
+            QueryDates(optionsURL);
 
             Console.WriteLine("Enter the number next to the date:");
-            choice = int.Parse(Console.ReadLine());
+            int choice = int.Parse(Console.ReadLine());
 
             string dateURL = optionsURL + "&date=" + unixTimestamp[choice];
-            QueryData(dateURL, false);
+            callsTable = QueryData(dateURL, callsTableNode);
 
-            ExcelExport(callsTable, putsTable);
-        }
+            Console.WriteLine("Enter the number next to the date:");
+            int choice2 = int.Parse(Console.ReadLine());
 
-        private static void ExcelExport(List<string[]> callsTable, List<string[]> putsTable)
-        {
+            dateURL = optionsURL + "&date=" + unixTimestamp[choice2];
+            callsTable2 = QueryData(dateURL, callsTableNode);
+
+
             FileInfo excelFile = new FileInfo(GetFilePath());
 
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
             using (ExcelPackage excel = new ExcelPackage(excelFile))
             {
-                ExcelWorksheet putsSheet = excel.Workbook.Worksheets["Puts"];
-                ExcelWorksheet callsSheet = excel.Workbook.Worksheets["Calls"];
-
-                callsSheet.Cells["AZ1"].Clear();
-                putsSheet.Cells["AZ1"].Clear();
-
-                callsSheet.Cells["AZ1"].Value = "Calls for " + dateFormat[choice];
-                putsSheet.Cells["AZ1"].Value = "Puts for " + dateFormat[choice];
-
-                callsSheet.Cells["AZ3:BJ100"].Value = "";
-                putsSheet.Cells["AZ3:BJ100"].Value = "";
-
-                StoreTable(callsSheet, callsTable);
-                StoreTable(putsSheet, putsTable);
-
+                ExcelExport(excel, callsTable, "Calls", choice);
+                ExcelExport(excel, callsTable2, "Calls2", choice2);
                 excel.Save();
             }
+
+            Process psExcel = new Process();
+            psExcel.StartInfo.UseShellExecute = true;
+            psExcel.StartInfo.FileName = GetFilePath();
+            psExcel.Start();
+
+            Process.GetCurrentProcess().Kill();
+        }
+
+        private static void ExcelExport(ExcelPackage excel, List<string[]> table, string sheetName, int choice)
+        {
+            ExcelWorksheet sheet = excel.Workbook.Worksheets[sheetName];
+
+            sheet.Cells["A1:L1"].Clear();
+
+            sheet.Cells["A1"].Value = "Calls for " + dateFormat[choice];
+            sheet.Cells["B1"].Value = ticker;
+            sheet.Cells["C1"].Value = decimal.Round(decimal.Parse(currentPrice), 2);
+            sheet.Cells["L1"].Value = dateFormat[choice];
+
+            sheet.Cells["A3:K100"].Value = null;
+
+            StoreTable(sheet, table);
         }
 
         private static void StoreTable(ExcelWorksheet sheet, List<string[]> table)
@@ -75,7 +89,7 @@ namespace OptionsUpdater
             foreach (string[] row in table)
             {
                 rowNum++;
-                dataRange = "AZ" + rowNum + ":BJ" + rowNum;
+                dataRange = "A" + rowNum + ":K" + rowNum;
 
                 foreach (string cell in row)
                 {
@@ -92,25 +106,24 @@ namespace OptionsUpdater
             return @"C:\Users\" + username + @"\Desktop\test.xlsx";
         }
 
-        private static void QueryData(string url, bool printDates)
+        private static void QueryDates(string url)
+        {
+            HtmlDocument document = new HtmlWeb().Load(url);
+            CurrentPriceParser(document);
+            DateDropdownParser(document);
+        }
+
+        private static List<string[]> QueryData(string url, string node)
         {
             HtmlDocument document = new HtmlWeb().Load(url);
 
-            if (printDates)
-            {
-                CurrentPriceParser(document);
-                DateDropdownParser(document);
-            }
-            else
-            {
-                OptionsDataParser(document);
-            }
+            return OptionsDataParser(document, node);
         }
 
         private static void CurrentPriceParser(HtmlDocument document)
         {
             HtmlNode priceNode = document.DocumentNode.SelectSingleNode(currentPriceNode);
-            string currentPrice = priceNode.InnerText;
+            currentPrice = priceNode.InnerText;
 
             Console.WriteLine("The current price for " + ticker + " is: $" + currentPrice);
         }
@@ -129,15 +142,9 @@ namespace OptionsUpdater
             }
         }
 
-        private static void OptionsDataParser(HtmlDocument document)
+        private static List<string[]> OptionsDataParser(HtmlDocument document, string tableNode)
         {
-            callsTable = document.DocumentNode.SelectSingleNode(callsTableNode)
-                .Descendants("tr")
-                .Where(tr => tr.Elements("td").Count() > 1)
-                .Select(tr => tr.Elements("td").Select(td => td.InnerText.Trim()).ToArray())
-                .ToList();
-
-            putsTable = document.DocumentNode.SelectSingleNode(putsTableNode)
+            return document.DocumentNode.SelectSingleNode(tableNode)
                 .Descendants("tr")
                 .Where(tr => tr.Elements("td").Count() > 1)
                 .Select(tr => tr.Elements("td").Select(td => td.InnerText.Trim()).ToArray())
