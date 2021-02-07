@@ -13,23 +13,30 @@ namespace OptionsUpdater
     {
         private static readonly string username = "dylan";
         private static readonly string base_url = "https://finance.yahoo.com/quote/";
-        private static readonly string ticker = "UVXY";
+        private static string ticker = "SPXL";
 
         private static readonly string currentPriceNode = "//span[@class='Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)']";
         private static readonly string dateDropdownNode = "//select[@class='Fz(s) H(25px) Bd Bdc($seperatorColor)']//option";
         private static readonly string callsTableNode = "//table[@class='calls W(100%) Pos(r) Bd(0) Pt(0) list-options']";
-        //private static readonly string putsTableNode = "//table[@class='puts W(100%) Pos(r) list-options']";
+        private static readonly string putsTableNode = "//table[@class='puts W(100%) Pos(r) list-options']";
 
         private static Dictionary<int, int> unixTimestamp = new Dictionary<int, int>();
         private static Dictionary<int, string> dateFormat = new Dictionary<int, string>();
-        private static List<string[]> callsTable, callsTable2;
+        private static List<string[]> callsTable, callsTable2, putsTable;
 
         private static string currentPrice;
 
         static void Main()
         {
             Console.WriteLine("Hello, " + username);
-            
+
+            Console.WriteLine("Enter a ticker or hit enter for default({0:G}):", ticker);
+            string inTicker = Console.ReadLine();
+            if (!String.IsNullOrWhiteSpace(inTicker))
+            {
+                ticker = inTicker.Trim().ToUpper();
+            }
+
             string optionsURL = base_url + ticker + "/options?p=" + ticker;
             QueryDates(optionsURL);
 
@@ -38,6 +45,8 @@ namespace OptionsUpdater
 
             string dateURL = optionsURL + "&date=" + unixTimestamp[choice];
             callsTable = QueryData(dateURL, callsTableNode);
+
+            putsTable = QueryData(dateURL, putsTableNode);
 
             Console.WriteLine("Enter the number next to the date:");
             int choice2 = int.Parse(Console.ReadLine());
@@ -52,6 +61,7 @@ namespace OptionsUpdater
             using (ExcelPackage excel = new ExcelPackage(excelFile))
             {
                 ExcelExport(excel, callsTable, "Calls", choice);
+                ExcelExport(excel, putsTable, "Puts", choice);
                 ExcelExport(excel, callsTable2, "Calls2", choice2);
                 excel.Save();
             }
@@ -70,7 +80,7 @@ namespace OptionsUpdater
 
             sheet.Cells["A1:L1"].Clear();
 
-            sheet.Cells["A1"].Value = "Calls for " + dateFormat[choice];
+            sheet.Cells["A1"].Value = sheetName + " for " + dateFormat[choice];
             sheet.Cells["B1"].Value = ticker;
             sheet.Cells["C1"].Value = decimal.Round(decimal.Parse(currentPrice), 2);
             sheet.Cells["L1"].Value = dateFormat[choice];
@@ -103,7 +113,7 @@ namespace OptionsUpdater
 
         private static string GetFilePath()
         {
-            return @"C:\Users\" + username + @"\Desktop\test.xlsx";
+            return @"C:\Users\" + username + @"\Documents\SPXL_options.xlsx";
         }
 
         private static void QueryDates(string url)
