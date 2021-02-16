@@ -43,13 +43,12 @@ namespace OptionsUpdater
             Console.WriteLine("Enter the number next to the date:");
             int choice = int.Parse(Console.ReadLine());
 
-            string dateURL = optionsURL + "&date=" + unixTimestamp[choice];
-            callsTable = QueryData(dateURL, callsTableNode);
-
-            putsTable = QueryData(dateURL, putsTableNode);
-
             Console.WriteLine("Enter the number next to the date:");
             int choice2 = int.Parse(Console.ReadLine());
+
+            string dateURL = optionsURL + "&date=" + unixTimestamp[choice];
+            callsTable = QueryData(dateURL, callsTableNode);
+            putsTable = QueryData(dateURL, putsTableNode);
 
             dateURL = optionsURL + "&date=" + unixTimestamp[choice2];
             callsTable2 = QueryData(dateURL, callsTableNode);
