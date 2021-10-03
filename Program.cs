@@ -22,7 +22,7 @@ namespace OptionsUpdater
 
         private static Dictionary<int, int> unixTimestamp = new Dictionary<int, int>();
         private static Dictionary<int, string> dateFormat = new Dictionary<int, string>();
-        private static List<string[]> callsTable, callsTable2, putsTable;
+        private static List<string[]> callsTable, callsTable2, putsTable, putsTable2;
 
         private static string currentPrice;
 
@@ -52,6 +52,7 @@ namespace OptionsUpdater
 
             dateURL = optionsURL + "&date=" + unixTimestamp[choice2];
             callsTable2 = QueryData(dateURL, callsTableNode);
+            putsTable2 = QueryData(dateURL, putsTableNode);
 
 
             FileInfo excelFile = new FileInfo(GetFilePath());
@@ -62,6 +63,7 @@ namespace OptionsUpdater
                 ExcelExport(excel, callsTable, "Calls", choice);
                 ExcelExport(excel, putsTable, "Puts", choice);
                 ExcelExport(excel, callsTable2, "Calls2", choice2);
+                ExcelExport(excel, putsTable2, "Puts2", choice2);
                 excel.Save();
             }
 
